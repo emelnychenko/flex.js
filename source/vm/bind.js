@@ -1,5 +1,12 @@
 vm.bind = function(force) {
     query(document).find('[bind]').each(function(element) {
-        vm.shared.keep(element, 'bind');
+        element = query(element);
+
+        vm.scope.watch(element.attr('bind'), function(id, old, value) {
+            element.text(value);
+            return value;
+        })
     });
 };
+
+vm.bind();

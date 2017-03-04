@@ -1,6 +1,10 @@
-query.fn.bind = function(event, call) {
+query.fn.bind = function(action, call) {
+    action = action.split(' ');
+
     this.each(function(element) {
-        element.addEventListener(event, call, false);
+        iterate(action, function(action) {
+            element.addEventListener(action, call, false);
+        });
     });
 
     return this;

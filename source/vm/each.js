@@ -1,6 +1,6 @@
 vm.each = function(force) {
     query(document).find('[each]').each(function(element) {
-        vm.shared.keep(element, 'each');
+        var id = vm.shared.keep(element, 'each');
 
 
         // console.log(element);
@@ -37,6 +37,10 @@ vm.each = function(force) {
         // console.log(vm.document);
     });
 };
+
+// mv.each.eval = function(key) {
+//
+// };
 
 // vm.apply = function() {
     // query(document).replace(vm.document);

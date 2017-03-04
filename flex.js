@@ -31,6 +31,51 @@ Math.fmod = function (x, y) {
   }
 };
 
+// object.watch
+if (!Object.prototype.watch) {
+	Object.defineProperty(Object.prototype, "watch", {
+		  enumerable: false
+		, configurable: true
+		, writable: false
+		, value: function (prop, handler) {
+			var
+			  oldval = this[prop]
+			, newval = oldval
+			, getter = function () {
+				return newval;
+			}
+			, setter = function (val) {
+				oldval = newval;
+				return newval = handler.call(this, prop, oldval, val);
+			}
+			;
+
+			if (delete this[prop]) { // can't watch constants
+				Object.defineProperty(this, prop, {
+					  get: getter
+					, set: setter
+					, enumerable: true
+					, configurable: true
+				});
+			}
+		}
+	});
+}
+
+// object.unwatch
+if (!Object.prototype.unwatch) {
+	Object.defineProperty(Object.prototype, "unwatch", {
+		  enumerable: false
+		, configurable: true
+		, writable: false
+		, value: function (prop) {
+			var val = this[prop];
+			delete this[prop]; // remove accessors
+			this[prop] = val;
+		}
+	});
+}
+
 window.flex = {};
 
 var
@@ -39,10 +84,10 @@ var
     number  = Number,
     boolean = Boolean,
     string  = String,
-    object  = Object
-;
+    object  = Object;
 
 function array(value) {
+    'use strict';
     return Array
         .prototype
         .slice
@@ -50,6 +95,7 @@ function array(value) {
 }
 
 function is(type, value) {
+    'use strict';
     switch (type) {
         case 'array':
             return Object
@@ -63,6 +109,7 @@ function is(type, value) {
 }
 
 function iterate(iterator, call, force) {
+    'use strict';
     switch (typeof iterator) {
         case 'object':
             if (force === 'array' || flex.is('array', iterator) === true) {
@@ -191,6 +238,26 @@ flex.is.dom = function(object) {
     return flex.is('node', object) || flex.is('element', object);
 };
 
+function timeout(call, time) {
+    return setTimeout(call, time);
+}
+
+timeout.cancel = function(promise) {
+    return clearTimeout(promise);
+}
+
+flex.timeout = timeout;
+
+function interval(call, time) {
+    return setInterval(call, time);
+}
+
+interval.cancel = function(promise) {
+    return clearInterval(promise);
+}
+
+flex.interval = interval;
+
 function init(request, context) {
     switch (typeof request) {
         case 'object':
@@ -317,14 +384,14 @@ query.fn.attr = function(key, value) {
 
 query.fn.text = function(text) {
     switch (typeof text) {
-        case 'string':
-            return this.each(function(element) {
-                element.textContent = text;
-            });
+        case 'undefined':
+            return this[0].textContent;
             break;
 
         default:
-            return this[0].textContent;
+            return this.each(function(element) {
+                element.textContent = is('object', text) ? json('encode', text) : text;
+            });
     }
 };
 
@@ -386,17 +453,25 @@ query.fn.click = function() {
     return this;
 };
 
-query.fn.bind = function(event, call) {
+query.fn.bind = function(action, call) {
+    action = action.split(' ');
+
     this.each(function(element) {
-        element.addEventListener(event, call, false);
+        iterate(action, function(action) {
+            element.addEventListener(action, call, false);
+        });
     });
 
     return this;
 };
 
-query.fn.unbind = function(event, call) {
+query.fn.unbind = function(action, call) {
+    action = action.split(' ');
+
     this.each(function(element) {
-        element.removeEventListener(event, call, false);
+        iterate(action, function(action) {
+            element.removeEventListener(action, call, false);
+        });
     });
 
     return this;
@@ -443,8 +518,6 @@ query.fn.remove = function() {
     })
 };
 
-// var vm;
-
 function vm() {
 
 }
@@ -455,36 +528,71 @@ vm.shared = [];
 
 vm.typeof = {};
 
-vm.guid = function (id) {
-    var base   = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
-    var length = base.length, outlet;
+vm.scope  = {};
 
-	while (id > length - 1) {
-		outlet = string(base[Math.fmod(id, length)]) + (outlet ? outlet : '');
-		id     = Math.floor(id / length);
-	}
+vm.bind = function(force) {
+    query(document).find('[bind]').each(function(element) {
+        element = query(element);
 
-	return string(base[id]) + (outlet ? outlet : '');
+        vm.scope.watch(element.attr('bind'), function(id, old, value) {
+            element.text(value);
+            return value;
+        })
+    });
 };
 
-vm.shared.keep = function(node, type) {
-    var id = vm.guid(vm.shared.length + 1);
+vm.bind();
 
-    vm.shared.push(id);
+vm.model = function(force) {
+    query(document).find('[model]').each(function(element) {
+        element = query(element);
 
-    if (!vm.typeof[type])
-        vm.typeof[type] = [];
+        switch (element.attr('type')) {
+            case 'text':
+            case 'number':
+            case 'search':
+            case 'url':
+            case 'date':
+            case 'time':
+            case 'month':
+            case 'week':
+            case 'datetime-local':
+            case 'textarea':
+            case null:
+                element.bind('keydown blur change', function() {
+                    timeout(function() {
+                        vm.scope[element.attr('model')] = element.val();
+                    }, 0);
+                });
+                break;
 
-    vm.typeof[type].push(id);
+            case 'select':
+            case 'radio':
+                element.bind('change', function() {
+                    timeout(function() {
+                        vm.scope[element.attr('model')] = element.val();
+                    }, 0);
+                });
 
-    vm.origin[id] = query(node).attr('guid', id).clone();
+            case 'checkbox':
+                element.bind('change', function() {
+                    timeout(function() {
+                        vm.scope[element.attr('model')] = element.get().checked;
+                    }, 0);
+                });
+        }
+
+        // setInterval(function() {
+        //
+        // }, 10);
+    });
 };
 
-flex.vm = vm;
+vm.model();
 
 vm.each = function(force) {
     query(document).find('[each]').each(function(element) {
-        vm.shared.keep(element, 'each');
+        var id = vm.shared.keep(element, 'each');
 
 
         // console.log(element);
@@ -522,15 +630,44 @@ vm.each = function(force) {
     });
 };
 
+// mv.each.eval = function(key) {
+//
+// };
+
 // vm.apply = function() {
     // query(document).replace(vm.document);
 // };
 
-vm.bind = function(force) {
-    query(document).find('[bind]').each(function(element) {
-        vm.shared.keep(element, 'bind');
-    });
+// var vm;
+
+vm.guid = function (id) {
+    var base   = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
+    var length = base.length, outlet;
+
+	while (id > length - 1) {
+		outlet = string(base[Math.fmod(id, length)]) + (outlet ? outlet : '');
+		id     = Math.floor(id / length);
+	}
+
+	return string(base[id]) + (outlet ? outlet : '');
 };
+
+vm.shared.keep = function(node, type) {
+    var id = vm.guid(vm.shared.length + 1);
+
+    vm.shared.push(id);
+
+    if (!vm.typeof[type])
+        vm.typeof[type] = [];
+
+    vm.typeof[type].push(id);
+
+    vm.origin[id] = query(node).attr('guid', id).clone();
+
+    return id;
+};
+
+flex.vm = vm;
 
 vm.data = function() {
     query(document).find('script[type="flex/data"]').each(function(element) {
@@ -541,7 +678,15 @@ vm.data = function() {
                 'decode', element.text().trim()
             );
 
-            extend(vm.data.shared, data);
+            var name = element.attr('name');
+
+            if (name) {
+                vm.scope[name] = data;
+            } else {
+                extend(
+                    vm.scope, data
+                );
+            }
         } catch (e) {
         //
         } finally {
@@ -550,5 +695,5 @@ vm.data = function() {
     });
 };
 
-vm.data.shared = {};
+vm.data();
 })(window);

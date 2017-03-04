@@ -1,15 +1,5 @@
 // var vm;
 
-function vm() {
-
-}
-
-vm.origin = {};
-
-vm.shared = [];
-
-vm.typeof = {};
-
 vm.guid = function (id) {
     var base   = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
     var length = base.length, outlet;
@@ -33,6 +23,8 @@ vm.shared.keep = function(node, type) {
     vm.typeof[type].push(id);
 
     vm.origin[id] = query(node).attr('guid', id).clone();
+
+    return id;
 };
 
 flex.vm = vm;

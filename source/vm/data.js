@@ -7,7 +7,15 @@ vm.data = function() {
                 'decode', element.text().trim()
             );
 
-            extend(vm.data.shared, data);
+            var name = element.attr('name');
+
+            if (name) {
+                vm.scope[name] = data;
+            } else {
+                extend(
+                    vm.scope, data
+                );
+            }
         } catch (e) {
         //
         } finally {
@@ -16,4 +24,4 @@ vm.data = function() {
     });
 };
 
-vm.data.shared = {};
+vm.data();

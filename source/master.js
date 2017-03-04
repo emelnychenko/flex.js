@@ -6,10 +6,10 @@ var
     number  = Number,
     boolean = Boolean,
     string  = String,
-    object  = Object
-;
+    object  = Object;
 
 function array(value) {
+    'use strict';
     return Array
         .prototype
         .slice
@@ -17,6 +17,7 @@ function array(value) {
 }
 
 function is(type, value) {
+    'use strict';
     switch (type) {
         case 'array':
             return Object
@@ -30,6 +31,7 @@ function is(type, value) {
 }
 
 function iterate(iterator, call, force) {
+    'use strict';
     switch (typeof iterator) {
         case 'object':
             if (force === 'array' || flex.is('array', iterator) === true) {

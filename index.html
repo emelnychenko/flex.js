@@ -9,9 +9,16 @@
         </script>
     </head>
     <body ctrl="app">
-        <h1 bind="message"></h1>
+        <h1 bind="name"></h1>
 
-        <div bind="message"></div>
+        <input type="text" name="" value="" model="name">
+
+        <textarea name="name" rows="8" cols="80" model="name"></textarea>
+
+        <input type="checkbox" name="" value="22" model="name">
+        <!-- <div bind="message"></div>
+
+        <input type="text" name="" value="" model="message"> -->
 
         <div class="heroes" each="i in [0,1,2,3,4]">
             <h1>Hero</h1>
