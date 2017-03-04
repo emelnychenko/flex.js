@@ -3,7 +3,12 @@ query.fn.bind = function(action, call) {
 
     this.each(function(element) {
         iterate(action, function(action) {
-            element.addEventListener(action, call, false);
+            element.addEventListener ?
+                element.addEventListener(
+                    action, call, false
+                ) : element.attachEvent(
+                    'on' + action, call
+                );
         });
     });
 

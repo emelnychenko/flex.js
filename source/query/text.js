@@ -6,7 +6,8 @@ query.fn.text = function(text) {
 
         default:
             return this.each(function(element) {
-                element.textContent = is('object', text) ? json('encode', text) : text;
+                element.textContent = is('object', text) ?
+                    json('encode', text) : text;
             });
     }
 };

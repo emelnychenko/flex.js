@@ -9,11 +9,17 @@ var
     object  = Object;
 
 function array(value) {
-    'use strict';
-    return Array
-        .prototype
-        .slice
-        .call(value);
+    var array = [];
+    // 'use strict';
+    for (var i = 0; i < value.length; i++) {
+        array.push(value[i]);
+    }
+
+    return array;
+    // return Array
+    //     .prototype
+    //     .slice
+    //     .call(value);
 }
 
 function is(type, value) {

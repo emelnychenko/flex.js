@@ -1,11 +1,27 @@
 vm.bind = function(force) {
     query(document).find('[bind]').each(function(element) {
-        element = query(element);
+        element  = query(element);
 
-        vm.scope.watch(element.attr('bind'), function(id, old, value) {
-            element.text(value);
-            return value;
-        })
+        var prop = element.attr('bind');
+
+        element.html('&#160');
+
+        vm.$watch(prop, function(value) {
+            switch (typeof value) {
+                case 'object':
+                    element.text(
+                        json('encode', value)
+                    );
+                    break;
+
+                default:
+                    value.length ? element.text(
+                        value
+                    ) : element.html(
+                        '&#160'
+                    );
+            }
+        });
     });
 };
 

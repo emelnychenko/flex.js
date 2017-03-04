@@ -29,11 +29,17 @@ module.exports = function(grunt) {
             },
             dist: {
                 src: [
-                    'source/ecma/fmod.js',
-                    'source/ecma/watch.js',
+                    //'source/ecma/fmod.js',
+                    //'source/ecma/complite.js',
+                    'source/ecma/object.watch.js',
+                    //'source/ecma/array.reduce.js',
+
+                    // 'source/ecma/proxy.js',
+                    //'source/ecma/promise.js',
 
                     'source/master.js',
                     'source/core/json.js',
+                    'source/core/eval.js',
                     'source/core/uri.js',
                     'source/core/dom.js',
                     'source/core/timeout.js',
@@ -69,7 +75,7 @@ module.exports = function(grunt) {
                     'source/vm/bind.js',
                     'source/vm/model.js',
                     'source/vm/each.js',
-                    'source/vm/dom.js',
+                    //'source/vm/dom.js',
                     'source/vm/data.js',
                 ],
                 dest: 'flex.js'

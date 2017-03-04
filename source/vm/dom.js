@@ -12,19 +12,19 @@ vm.guid = function (id) {
 	return string(base[id]) + (outlet ? outlet : '');
 };
 
-vm.shared.keep = function(node, type) {
-    var id = vm.guid(vm.shared.length + 1);
-
-    vm.shared.push(id);
-
-    if (!vm.typeof[type])
-        vm.typeof[type] = [];
-
-    vm.typeof[type].push(id);
-
-    vm.origin[id] = query(node).attr('guid', id).clone();
-
-    return id;
-};
+// vm.shared.keep = function(node, type) {
+//     var id = vm.guid(vm.shared.length + 1);
+//
+//     vm.shared.push(id);
+//
+//     if (!vm.typeof[type])
+//         vm.typeof[type] = [];
+//
+//     vm.typeof[type].push(id);
+//
+//     vm.origin[id] = query(node).attr('guid', id).clone();
+//
+//     return id;
+// };
 
 flex.vm = vm;

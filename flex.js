@@ -1,80 +1,39 @@
 (function(window, undefined) {
 'use strict';
-Math.fmod = function (x, y) {
-  //  discuss at: http://locutus.io/php/fmod/
-  // original by: Onno Marsman (https://twitter.com/onnomarsman)
-  //    input by: Brett Zamir (http://brett-zamir.me)
-  // bugfixed by: Kevin van Zonneveld (http://kvz.io)
-  //   example 1: fmod(5.7, 1.3)
-  //   returns 1: 0.5
-  var tmp;
-  var tmp2;
-  var p = 0;
-  var pY = 0;
-  var l = 0.0;
-  var l2 = 0.0;
-  tmp = x.toExponential().match(/^.\.?(.*)e(.+)$/);
-  p = parseInt(tmp[2], 10) - (tmp[1] + '').length;
-  tmp = y.toExponential().match(/^.\.?(.*)e(.+)$/);
-  pY = parseInt(tmp[2], 10) - (tmp[1] + '').length;
-  if (pY > p) {
-    p = pY;
-  }
-  tmp2 = (x % y);
-  if (p < -100 || p > 20) {
-    // toFixed will give an out of bound error so we fix it like this:
-    l = Math.round(Math.log(tmp2) / Math.log(10));
-    l2 = Math.pow(10, l);
-    return (tmp2 / l2).toFixed(l - p) * l2;
-  } else {
-    return parseFloat(tmp2.toFixed(-p));
-  }
-};
-
 // object.watch
-if (!Object.prototype.watch) {
-	Object.defineProperty(Object.prototype, "watch", {
-		  enumerable: false
-		, configurable: true
-		, writable: false
-		, value: function (prop, handler) {
-			var
-			  oldval = this[prop]
-			, newval = oldval
-			, getter = function () {
-				return newval;
-			}
-			, setter = function (val) {
-				oldval = newval;
-				return newval = handler.call(this, prop, oldval, val);
-			}
-			;
-
-			if (delete this[prop]) { // can't watch constants
-				Object.defineProperty(this, prop, {
-					  get: getter
-					, set: setter
-					, enumerable: true
-					, configurable: true
-				});
-			}
-		}
-	});
-}
+if (!Object.prototype.watch)
+    Object.prototype.watch = function (prop, handler) {
+        var oldval = this[prop], newval = oldval,
+        getter = function () {
+            return newval;
+        },
+        setter = function (val) {
+            oldval = newval;
+            return newval = handler.call(this, prop, oldval, val);
+        };
+        if (delete this[prop]) { // can't watch constants
+            if (Object.defineProperty) // ECMAScript 5
+                Object.defineProperty(this, prop, {
+                    get: getter,
+                    set: setter,
+                    enumerable: true,
+                    configurable: true
+                });
+            else if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) { // legacy
+                Object.prototype.__defineGetter__.call(this, prop, getter);
+                Object.prototype.__defineSetter__.call(this, prop, setter);
+                this.propertyIsEnumerable(prop);
+            }
+        }
+    };
 
 // object.unwatch
-if (!Object.prototype.unwatch) {
-	Object.defineProperty(Object.prototype, "unwatch", {
-		  enumerable: false
-		, configurable: true
-		, writable: false
-		, value: function (prop) {
-			var val = this[prop];
-			delete this[prop]; // remove accessors
-			this[prop] = val;
-		}
-	});
-}
+if (!Object.prototype.unwatch)
+    Object.prototype.unwatch = function (prop) {
+        var val = this[prop];
+        delete this[prop]; // remove accessors
+        this[prop] = val;
+    };
 
 window.flex = {};
 
@@ -87,11 +46,17 @@ var
     object  = Object;
 
 function array(value) {
-    'use strict';
-    return Array
-        .prototype
-        .slice
-        .call(value);
+    var array = [];
+    // 'use strict';
+    for (var i = 0; i < value.length; i++) {
+        array.push(value[i]);
+    }
+
+    return array;
+    // return Array
+    //     .prototype
+    //     .slice
+    //     .call(value);
 }
 
 function is(type, value) {
@@ -197,6 +162,24 @@ json.encode = JSON.stringify;
 json.decode = JSON.parse;
 
 flex.json   = json;
+
+// flex.eval = function(expression) {
+//     return eval(expression);
+// };
+
+eval.object = function(object, path, call) {
+    var argv = path.split('.'), argc = argv.length - 1;
+
+    return argv.reduce(function(object, key, idx, props) {
+        if (idx !== argc && !object[key])
+            object[key] = {};
+
+        if (idx === argc && call)
+            call(object, key, idx, props);
+
+        return object[key];
+    }, object);
+};
 
 /**
   *  json
@@ -390,7 +373,8 @@ query.fn.text = function(text) {
 
         default:
             return this.each(function(element) {
-                element.textContent = is('object', text) ? json('encode', text) : text;
+                element.textContent = is('object', text) ?
+                    json('encode', text) : text;
             });
     }
 };
@@ -458,7 +442,12 @@ query.fn.bind = function(action, call) {
 
     this.each(function(element) {
         iterate(action, function(action) {
-            element.addEventListener(action, call, false);
+            element.addEventListener ?
+                element.addEventListener(
+                    action, call, false
+                ) : element.attachEvent(
+                    'on' + action, call
+                );
         });
     });
 
@@ -514,7 +503,7 @@ query.fn.replace = function(destination) {
 
 query.fn.remove = function() {
     this.each(function(element) {
-        element.remove();
+        element.parentElement.removeChild(element);
     })
 };
 
@@ -522,22 +511,77 @@ function vm() {
 
 }
 
-vm.origin = {};
-
-vm.shared = [];
-
-vm.typeof = {};
+// vm.origin = {};
+//
+// vm.shared = [];
+//
+// vm.typeof = {};
 
 vm.scope  = {};
 
+vm.$watch = function(prop, call) {
+    if (vm.$watch.pipes[prop] === undefined) {
+        vm.$watch.pipes[prop] = [];
+
+        eval.object(vm.scope, prop, function(object, $prop, index, props) {
+            if (is('object', object) === false) object = {};
+
+            object.watch($prop, function(id, old, nue) {
+                // object[$prop] = nue;
+
+                if (props.length > 1)
+                    for (var i = 1; i < props.length; i++) {
+                        var $$prop = props.slice(0, i).join('.');
+
+                        timeout(function () {
+                            eval.object(vm.scope, $$prop, function(object, $prop) {
+                                iterate(vm.$watch.pipes[$prop], function(call) {
+                                    call(object[$prop], object[$prop]);
+                                });
+                            });
+                        }, 0);
+                    }
+
+                iterate(vm.$watch.pipes[prop], function(call) {
+                    call(nue, old);
+                });
+
+                return nue;
+            });
+        });
+    }
+
+    vm.$watch.pipes[prop].push(call);
+};
+
+vm.$watch.pipes = {};
+
+flex.vm = vm;
+
 vm.bind = function(force) {
     query(document).find('[bind]').each(function(element) {
-        element = query(element);
+        element  = query(element);
 
-        vm.scope.watch(element.attr('bind'), function(id, old, value) {
-            element.text(value);
-            return value;
-        })
+        var prop = element.attr('bind');
+
+        element.html('&#160');
+
+        vm.$watch(prop, function(value) {
+            switch (typeof value) {
+                case 'object':
+                    element.text(
+                        json('encode', value)
+                    );
+                    break;
+
+                default:
+                    value.length ? element.text(
+                        value
+                    ) : element.html(
+                        '&#160'
+                    );
+            }
+        });
     });
 };
 
@@ -546,6 +590,8 @@ vm.bind();
 vm.model = function(force) {
     query(document).find('[model]').each(function(element) {
         element = query(element);
+
+        var prop = element.attr('model');
 
         switch (element.attr('type')) {
             case 'text':
@@ -559,32 +605,49 @@ vm.model = function(force) {
             case 'datetime-local':
             case 'textarea':
             case null:
-                element.bind('keydown blur change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.val();
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element.val() !== value)
+                        element.val(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('keydown blur change', function() {
+                        timeout(function() {
+                                object[prop] = element.val();
+                        }, 0);
+                    });
                 });
                 break;
 
             case 'select':
             case 'radio':
-                element.bind('change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.val();
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element.val() !== value)
+                        element.val(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('change', function() {
+                        timeout(function() {
+                                object[prop] = element.val();
+                        }, 0);
+                    });
                 });
 
             case 'checkbox':
-                element.bind('change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.get().checked;
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element[0].checked !== boolean(value))
+                        element[0].checked = boolean(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('change', function() {
+                        timeout(function() {
+                            object[prop] = element.get().checked;
+                        }, 0);
+                    });
                 });
         }
-
-        // setInterval(function() {
-        //
-        // }, 10);
     });
 };
 
@@ -592,7 +655,7 @@ vm.model();
 
 vm.each = function(force) {
     query(document).find('[each]').each(function(element) {
-        var id = vm.shared.keep(element, 'each');
+        // var id = vm.shared.keep(element, 'each');
 
 
         // console.log(element);
@@ -637,37 +700,6 @@ vm.each = function(force) {
 // vm.apply = function() {
     // query(document).replace(vm.document);
 // };
-
-// var vm;
-
-vm.guid = function (id) {
-    var base   = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
-    var length = base.length, outlet;
-
-	while (id > length - 1) {
-		outlet = string(base[Math.fmod(id, length)]) + (outlet ? outlet : '');
-		id     = Math.floor(id / length);
-	}
-
-	return string(base[id]) + (outlet ? outlet : '');
-};
-
-vm.shared.keep = function(node, type) {
-    var id = vm.guid(vm.shared.length + 1);
-
-    vm.shared.push(id);
-
-    if (!vm.typeof[type])
-        vm.typeof[type] = [];
-
-    vm.typeof[type].push(id);
-
-    vm.origin[id] = query(node).attr('guid', id).clone();
-
-    return id;
-};
-
-flex.vm = vm;
 
 vm.data = function() {
     query(document).find('script[type="flex/data"]').each(function(element) {

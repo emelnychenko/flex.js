@@ -1,6 +1,6 @@
 vm.each = function(force) {
     query(document).find('[each]').each(function(element) {
-        var id = vm.shared.keep(element, 'each');
+        // var id = vm.shared.keep(element, 'each');
 
 
         // console.log(element);

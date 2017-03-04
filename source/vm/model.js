@@ -2,6 +2,8 @@ vm.model = function(force) {
     query(document).find('[model]').each(function(element) {
         element = query(element);
 
+        var prop = element.attr('model');
+
         switch (element.attr('type')) {
             case 'text':
             case 'number':
@@ -14,32 +16,49 @@ vm.model = function(force) {
             case 'datetime-local':
             case 'textarea':
             case null:
-                element.bind('keydown blur change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.val();
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element.val() !== value)
+                        element.val(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('keydown blur change', function() {
+                        timeout(function() {
+                                object[prop] = element.val();
+                        }, 0);
+                    });
                 });
                 break;
 
             case 'select':
             case 'radio':
-                element.bind('change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.val();
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element.val() !== value)
+                        element.val(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('change', function() {
+                        timeout(function() {
+                                object[prop] = element.val();
+                        }, 0);
+                    });
                 });
 
             case 'checkbox':
-                element.bind('change', function() {
-                    timeout(function() {
-                        vm.scope[element.attr('model')] = element.get().checked;
-                    }, 0);
+                vm.$watch(prop, function(value) {
+                    if (element[0].checked !== boolean(value))
+                        element[0].checked = boolean(value);
+                });
+
+                eval.object(vm.scope, prop, function(object, prop) {
+                    element.bind('change', function() {
+                        timeout(function() {
+                            object[prop] = element.get().checked;
+                        }, 0);
+                    });
                 });
         }
-
-        // setInterval(function() {
-        //
-        // }, 10);
     });
 };
 

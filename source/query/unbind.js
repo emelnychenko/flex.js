@@ -1,6 +1,10 @@
-query.fn.unbind = function(event, call) {
+query.fn.unbind = function(action, call) {
+    action = action.split(' ');
+
     this.each(function(element) {
-        element.removeEventListener(event, call, false);
+        iterate(action, function(action) {
+            element.removeEventListener(action, call, false);
+        });
     });
 
     return this;
